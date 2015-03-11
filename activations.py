@@ -2,8 +2,9 @@ import numpy as np
 
 def softmax(z):
     sm = np.exp(z)
-    return sm/sm.sum(axis=-1)
+    return (sm.T/sm.sum(axis=-1)).T
 
+#Need to vectorize these functions
 def d_softmax(z):
     """
     Gradient of softmax function evaluated at z
