@@ -34,6 +34,7 @@ class Layer(object):
         self.grad_weights = None
         self.grad_bias = None
 
+        self.train = False
 
     def forward(self, inp): 
         """ Maps the input layer forward through the network,
@@ -89,6 +90,12 @@ class Layer(object):
         elif self.bias is not None:
             return [self.bias], [self.grad_bias]
         return [], []
+
+    def training(self):
+        self.train = True
+
+    def evaluate(self):
+        self.train = False
 
 class Linear(Layer):
     """ A simple Rectified Linear Layer """
@@ -158,4 +165,25 @@ class LogSoftMax(Layer):
         a = np.exp(inp)
         self.grad_input = grad_output - grad_output.sum(0)[None,:] * a / a.sum(0)[None,:]
 
+class Dropout(Layer):
+
+    def __init__(self, p = 0.5):
+        self.p = p
+        super(Dropout, self).__init__()
+
+    def update_output(self, inp):
+        # If we are training, apply a mask
+        if self.train:
+            self.mask = (np.random.rand(*inp.shape) < self.p) / (1-self.p)
+            self.output = self.mask * inp 
+            return self.output
+        else:
+            self.output = inp
+            return self.output
+
+    def update_grad_input(self, inp, grad_output):
+        if self.train:
+            self.grad_input = self.mask * grad_output
+        else:
+            self.grad_input = grad_output
 

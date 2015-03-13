@@ -44,6 +44,14 @@ class Network(object):
         self.update_parameters(learning_rate)
         return output.sum()
 
+    def training(self):
+        for l in self.layers:
+            l.training()
+
+    def evaluate(self):
+        for l in self.layers:
+            l.evaluate()
+
 
 
 
