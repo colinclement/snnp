@@ -85,7 +85,7 @@ class Network(object):
         for L in self.layers:
             L.evaluate()
 
-    def train(self, inp, targets, learningrate=1E-2):
+    def train(self, inp, targets, learningrate=1E-3):
         output = self.forward(inp, targets)
         self.zeroGradParameters()
         gradOutput = self.backward()
