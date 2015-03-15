@@ -1,11 +1,19 @@
+"""
+SNNP - Simple Neural Networks with Python
+
+author: Colin Clement
+date: 2015-03-13
+
+Neural network layer classes based on torch nn module
+"""
+
 import numpy as np
 from scipy.linalg import inv, sqrtm
-import activations as act
-import cPickle as pickle
-import gzip
-import matplotlib.pyplot as plt
+from scipy.special import expit
+from scipy.misc import logsumexp
 
 def orthogonalize(m):
+    """Make columns orthogonal, to use Ganguli's initial conditions"""
     return np.real(m.dot(inv(sqrtm(m.T.dot(m)))))
 
 class Layer(object):
@@ -17,17 +25,30 @@ class Layer(object):
         self.gradOutput - Gradients w.r.t. output of layer
         self.train - Bool if network is being trained
     """
+    def __init__(self):
+        """Default initializatin"""
+        self.output = None #Computed with last call of forward()
+        self.gradInput = None # Gradients w.r.t. inputs
 
+        self.W = None #learnable weights
+        self.b = None #learnable biases
+
+        self.gradW = None #Gradient of W
+        self.gradb = None #Gradient of b
+
+        self.train = False
+        self.scale = 1.
 
     def forward(self, inp):
         """ Given an input, compute the forward pass """
         return self.updateOutput(inp)
 
-    def backward(self, inp, gradOutput):
-        """ Given an gradient above, do backprob back
-        through the layer """
-        self.gradInput = self.updateGradInput(inp, gradOutput)
-        return self.accGradParameters(inp, gradOutput, self.scale)
+    def backward(self, inp, gradOutput, scale=1.):
+        """ Given an gradient of output, do backprob back
+        through the layer and return gradient of input"""
+        self.updateGradInput(inp, gradOutput)
+        self.accGradParameters(inp, gradOutput, scale)
+        return self.gradInput
 
     def updateOutput(self, inp):
         """ Override to set and return self.output"""
@@ -36,26 +57,41 @@ class Layer(object):
 
     def updateGradInput(self, inp, gradOutput):
         """Compute gradient of layer w.r.t. its own paramm"""
-        return self.gradInput
 
     def accGradParameters(self, inp, gradOutput, scale):
         """Accumulates gradients w.r.t. parameters"""
+        return self.gradInput
 
     def zeroGradParameters(self):
         """Used to set grad parameter accumulation to zero"""
-        
+        p, gp = self.parameters()
+        for g in gp:
+            g.fill(0)
+    
     def updateParameters(self, learningrate):
-        """Update parameters accumulated
-        parameters = parameters - learningRate * gradients_wrt_parameters
-        """
-
+        """Update parameters accumulated """
+        ps, gps = self.parameters()
+        for p, gp in zip(ps, gps):
+            p -= learningrate*gp
+    
     def parameters(self):
         """Returns learnable parameters and gradients of those parameters """
+        if self.W is not None and self.b is not None:
+            return [self.W, self.b], [self.gradW, self.gradb]
+        elif self.W is not None:
+            return [self.W], [self.gradW]
+        elif self.b is not None:
+            return [self.b], [self.gradb]
+        else:
+            return [], []
     
     def getParameters(self):
         """Returns flat arrays of params and gradParams"""
         p, gp = self.parameters()
-        return p.ravel(), gp.ravel()
+        if p and gp:
+            return map(np.ravel, p), map(np.ravel, gp)
+        else:
+            return p, gp
     
     def training(self):
         self.train = True
@@ -68,45 +104,68 @@ class Linear(Layer):
     """Linear layer with weights and biases  Wx+b"""
     def __init__(self, fan_in, fan_out):
         self.W = np.random.randn(fan_out, fan_in)
-        self.b = np.random.randn(fan_out)
+        self.W = orthogonalize(self.W)/np.sqrt(2.*fan_out)
+        self.b = np.random.randn(fan_out)/np.sqrt(2.*fan_out)
+        self.gradW = np.zeros_like(self.W)
+        self.gradb = np.zeros_like(self.b)
 
     def updateOutput(self, inp):
-        self.output = self.W.dot(inp) + self.b
+        self.output = self.W.dot(inp) + self.b[:,None]
         return self.output
 
     def updateGradInput(self, inp, gradOutput):
+        self.gradInput = (gradOutput.T.dot(self.W)).T
 
-    
-class LossLayer(Layer):
-    """ Represents a loss layer at the top of the network """
-    def __init__(self, N):
-        """
-        N : number of nodes
-        """
-        self.W = np.eye(N) #No weights
-    
-    def forward(self, inp, tl):
-        self.newinp = inp.copy()
-        self.newtl = tl
-        self.newact = act.crossEntropy_of_softmax(inp, tl)
-        return self.newact 
+    def accGradParameters(self, inp, gradOutput, scale=1.0):
+        """ Update gradient accumulations, mean used so learningrate is
+            independent of number of samples"""    
+        self.gradW += scale * (gradOutput[:,None,:] * inp[None,:,:]).mean(-1)
+        self.gradb += scale * gradOutput.mean(-1)
+   
 
-    def backward(self, out = None, tl=None):
-        return act.d_crossEntropy_of_softmax(out or self.newinp,
-                                             tl or self.newtl) 
+class Softmax(Layer):
+    """ Softmax layer"""
+   
+    def softmax(self, inp):
+        maxsub = inp - inp.max(0)
+        sm = np.exp(maxsub)
+        return  sm/sm.sum(axis=0)
+
+    def updateOutput(self, inp):
+        self.output = self.softmax(inp)
+        return self.output 
+
+    def updateGradInput(self, inp, gradOutput):
+        """ Assumes updateOutput was called previously, uses self.output as
+            softmax of last inp on foreward call"""
+        if self.output is not None:
+            sm = self.output
+        else:
+            sm = self.softmax(inp) 
+        smeye = (sm[:,None].T*np.eye(len(sm))).T
+        self.gradInput = gradOutput *(smeye - np.einsum('np,mp->nmp',sm,sm))
 
 
-class InputLayer(Layer):
-    """ Represents the input """
-    def __init__(self, data):
-        self.W = 1 #No weights
+class ReLU(Layer):
+    """ Rectified Linear activation layer"""
 
-    def forward(self, inp, tl):
-        self.newact = inp.copy()
-        self.newtl = tl
-        return self.newact
+    def updateOutput(self, inp):
+        """inp if inp>0 else 0"""
+        self.output = (inp>0.)*inp
+        return self.output
 
-    def backward(self, inp=None, tl = None):
-        return inp or self.newact
+    def updateGradInput(self, inp, gradOutput):
+        self.gradInput = gradOutput*(inp>0)
+
+
+def Sigmoid(Layer):
+    """ Sigmoid activation """
+
+    def updateOutput(self, inp):
+        self.output = expit(inp)
+        return self.output
+
+    def updateGradInput(self, inp, gradOutput):
+        self.gradInput = gradOutput * self.output*(1.-self.output)
 
 
