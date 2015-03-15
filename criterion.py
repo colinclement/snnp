@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import xlogy
+from scipy.misc import logsumexp
 
 class Criterion(object):
 
@@ -26,14 +27,14 @@ class CrossEntropyCriterion(Criterion):
         sm = np.exp(maxsub)
         return sm/sm.sum(axis=0)
 
-    def crossEntropy(self, p, t):
-        return np.sum(xlogy(t, t/p))
+    def crossEntropyOfSoftMax(self, x, t):
+        return np.sum(xlogy(t,t)+t*(-x+logsumexp(x, axis=0)))
 
     def forward(self, inp, targets):
         if self.one_hot is None:
             self.one_hot = np.eye(inp.shape[0])
-        self.output = self.crossEntropy(self.softmax(inp),
-                                        self.one_hot[targets].T)
+        targs = self.one_hot[targets].T
+        self.output = self.crossEntropyOfSoftMax(inp, targs)
         return self.output
 
     def backward(self, inp, targets):
