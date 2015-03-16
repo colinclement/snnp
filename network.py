@@ -16,8 +16,12 @@ class Network(object):
         self.output = None
         self.criterion = None
         self.inputlist = []
+        self.train = True
 
     def forward(self, inp, targets):
+        if np.prod(inp.shape) == 0 and len(targets)==0:
+            print 'Warning, no input or targets'
+            return None
         if len(inp.shape)==1:
             inp = inp[:,None]
         self.last_targets = targets
@@ -25,7 +29,7 @@ class Network(object):
         for L in self.layers:
             inp = L.forward(inp)
             self.inputlist += [inp.copy()]
-        if self.criterion is not None:
+        if self.train:
             inp = self.criterion.forward(inp, targets)
         self.output = inp
         return self.output 
@@ -74,22 +78,31 @@ class Network(object):
                 run += lb
 
     def _getCost(self, x, inp, targets):
+        """ For numerical gradient testing"""
+        self.train = True
         self._setParameters(x)
         return self.forward(inp, targets)
 
     def training(self):
+        self.train = True
         for L in self.layers:
             L.training()
 
     def evaluate(self):
+        self.train = False
         for L in self.layers:
             L.evaluate()
 
-    def train(self, inp, targets, learningrate=1E-3):
+    def trainInputTargets(self, inp, targets, learningrate=1E-3):
+        self.training()
         output = self.forward(inp, targets)
+        if output is None:
+            print 'Training halted, no data provided'
+            return None
         self.zeroGradParameters()
         gradOutput = self.backward()
         self.updateParameters(learningrate)
+        self.evaluate()
         return output.sum() #Final cost
 
     
