@@ -103,9 +103,10 @@ class Layer(object):
 class Linear(Layer):
     """Linear layer with weights and biases  Wx+b"""
     def __init__(self, fan_in, fan_out):
-        self.W = np.random.randn(fan_out, fan_in)
-        self.W = orthogonalize(self.W)/np.sqrt(2.*fan_out)
-        self.b = np.random.randn(fan_out)/np.sqrt(2.*fan_out)
+        #Saxe & Ganguli initial conditions
+        self.W = np.random.normal(0.0, 1./np.sqrt(fan_out), (fan_out, fan_in))
+        self.W = orthogonalize(self.W)
+        self.b = np.random.normal(0.0, 1./np.sqrt(fan_out), fan_out)
         self.gradW = np.zeros_like(self.W)
         self.gradb = np.zeros_like(self.b)
 
@@ -147,7 +148,7 @@ class Softmax(Layer):
 
 
 class ReLU(Layer):
-    """ Rectified Linear activation layer"""
+    """ Rectified Linear activation layer """
 
     def updateOutput(self, inp):
         """inp if inp>0 else 0"""
@@ -158,7 +159,7 @@ class ReLU(Layer):
         self.gradInput = gradOutput*(inp>0)
 
 
-def Sigmoid(Layer):
+class Sigmoid(Layer):
     """ Sigmoid activation """
 
     def updateOutput(self, inp):
