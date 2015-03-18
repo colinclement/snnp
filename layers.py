@@ -102,11 +102,14 @@ class Layer(object):
 
 class Linear(Layer):
     """Linear layer with weights and biases  Wx+b"""
-    def __init__(self, fan_in, fan_out):
-        #Saxe & Ganguli initial conditions
-        self.W = np.random.normal(0.0, 1./np.sqrt(fan_out), (fan_out, fan_in))
-        self.W = orthogonalize(self.W)
-        self.b = np.random.normal(0.0, 1./np.sqrt(fan_out), fan_out)
+    def __init__(self, fan_in, fan_out, weight_init='PReLU'):
+        if weight_init == 'PReLU':
+            self.W = np.random.normal(0.0, np.sqrt(2./fan_out), (fan_out, fan_in))
+            self.b = np.random.normal(0.0, np.sqrt(2./fan_out), fan_out)
+        elif weight_init == 'Ganguli': #Saxe & Ganguli initial conditions
+            self.W = np.random.normal(0.0, 1./np.sqrt(fan_out), (fan_out, fan_in))
+            self.W = orthogonalize(self.W)
+            self.b = np.random.normal(0.0, 1./np.sqrt(fan_out), fan_out)
         self.gradW = np.zeros_like(self.W)
         self.gradb = np.zeros_like(self.b)
 
