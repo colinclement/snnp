@@ -29,8 +29,7 @@ class Network(object):
         for L in self.layers:
             inp = L.forward(inp)
             self.inputlist += [inp.copy()]
-        if self.train:
-            inp = self.criterion.forward(inp, targets)
+        inp = self.criterion.forward(inp, targets)
         self.output = inp
         return self.output 
 
@@ -51,6 +50,16 @@ class Network(object):
     def updateParameters(self, learningrate=0.1):
         for L in self.layers:
             L.updateParameters(learningrate)
+    
+    def training(self):
+        self.train = True
+        for L in self.layers:
+            L.training()
+
+    def evaluate(self):
+        self.train = False
+        for L in self.layers:
+            L.evaluate()
 
     def getParameters(self):
         """ Returns flattened array for learable parameters and their
@@ -77,24 +86,32 @@ class Network(object):
                 L.b = x[run:run+lb]
                 run += lb
 
-    def _getCost(self, x, inp, targets):
-        """ For numerical gradient testing"""
-        self.train = True
+    def _getCost_dCost(self, x, inptargets):
+        """ Computes cost and gradient for external optimization
+            routine.
+            input:
+                x : learnable parameters in array of dimension 1
+                inptargets : Two-element tuple containing
+                        (data input of shape (dimension, N_samples)
+                        integer array of shape (N_samples))
+            returns criterion cost, gradient of parameters
+        """
+        inp, targets = inptargets
         self._setParameters(x)
-        return self.forward(inp, targets)
+        cost = self.forward(inp, targets)
+        self.zeroGradParameters()
+        gradOutput = self.backward()
+        ps, gps = self.getParameters()
+        return cost, gps
 
-    def training(self):
-        self.train = True
-        for L in self.layers:
-            L.training()
-
-    def evaluate(self):
-        self.train = False
-        for L in self.layers:
-            L.evaluate()
-
-    def trainInputTargets(self, inp, targets, learningrate=1E-3):
-        self.training()
+    def trainSGD(self, inp, targets, learningrate=1E-3):
+        """
+            Stochastic gradient descent step.
+            input:
+                inp : training data array shape (dimension, N_sample)
+                targets : integer array of length (N_sample)
+                learningrate : gradient stepsize
+        """
         output = self.forward(inp, targets)
         if output is None:
             print 'Training halted, no data provided'
@@ -102,7 +119,6 @@ class Network(object):
         self.zeroGradParameters()
         gradOutput = self.backward()
         self.updateParameters(learningrate)
-        self.evaluate()
         return output.sum() #Final cost
 
     
