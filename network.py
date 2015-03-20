@@ -85,6 +85,10 @@ class Network(object):
                 run += lws
                 L.b = x[run:run+lb]
                 run += lb
+            elif L.a is not None:
+                la = len(L.a)
+                L.a = x[run:run+la]
+                run += la
 
     def _getCost_dCost(self, x, inptargets):
         """ Computes cost and gradient for external optimization
