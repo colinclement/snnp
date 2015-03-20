@@ -32,9 +32,11 @@ class Layer(object):
 
         self.W = None #learnable weights
         self.b = None #learnable biases
+        self.a = None #Activation parameters
 
         self.gradW = None #Gradient of W
         self.gradb = None #Gradient of b
+        self.grada = None #Gradient of a
 
         self.train = False
         self.scale = 1.
