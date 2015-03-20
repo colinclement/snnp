@@ -57,7 +57,6 @@ class SGD(object):
         else:
             self.shuffle = True
         self.batchiter = self.getBatchIter(self.batchsize, self.shuffle)
-        self.initialCost = self.Net.forward(self.inputs, self.targets)
         self.costs = []
 
     def getBatchIter(self, batchsize, shuffle=True):
@@ -76,11 +75,8 @@ class SGD(object):
         self.batchiter = self.getBatchIter(self.batchsize, self.shuffle)
         self.costs = []
 
-    def getCostHistory(self):
-        deltas = np.diff(self.costs)
-        return self.initialCost + deltas
-    
     def train(self, N_epochs):
+        self.Net.training()
         N_samples = len(self.targets)
         batchPerEpoch = int(np.ceil(N_samples/self.batchsize))
         for epoch in xrange(N_epochs):
@@ -88,10 +84,11 @@ class SGD(object):
                 self.batchStep()
             if self.shuffle:
                 self.batchiter = self.getBatchIter(self.batchsize, self.shuffle)
+        self.Net.evaluate()
         
 
 class SFOmin(object):
-    def __init__(self, network, data, targets, conv = 1E-6,
+    def __init__(self, network, data, targets, conv = 1,
                 **kwargs):
         """
             Train network on data and targets with the
@@ -100,7 +97,7 @@ class SFOmin(object):
                 network : Instance of Network
                 data : shape (dimension, N_samples)
                 targets : array of targets (N_samples)
-                conv : Stops if parameters change by less than this
+                conv : Stops if cost change is less than this 
             **kwargs:
                 maxiters : maximum number of iterations to limit
                            self.optimizeToConv
@@ -114,7 +111,7 @@ class SFOmin(object):
         if 'maxiters' in kwargs:
             self.maxiters = kwargs['maxiters']
         else:
-            self.maxiters = 20
+            self.maxiters = 10
         if 'iprint' in kwargs:
             self.iprint = kwargs['iprint']
         else:
@@ -134,17 +131,21 @@ class SFOmin(object):
         return SFO(self.Net._getCost_dCost, self.initial_p, self.batches,
                   display = self.iprint)
 
+    ## I still don't like this convergence criterion, it doesn't work very well.
+    ##
     def optimizeToConv(self):
         deltaCost = 1E6 #arbitrary large number
         niters = 0
+        self.Net.training()
         while deltaCost > self.conv:
             self.optimizer.optimize(1) #One pass over the data
-            hist_f = self.optimizer.hist_f
-            deltaCost = np.max(np.abs(hist_f[:,0] - hist_f[:,1]))
+            hist = self.optimizer.hist_f_flat
+            deltaCost = np.max(np.abs(hist[-1] - hist[-2]))
             niters += 1
             if niters > self.maxiters:
                 print '{} iterations passed, deltaCost = {}'.format(self.maxiters, 
                                                                     deltaCost)
                 break
+        self.Net.evaluate()
         return niters
 
