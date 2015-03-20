@@ -82,6 +82,8 @@ class Layer(object):
             return [self.W], [self.gradW]
         elif self.b is not None:
             return [self.b], [self.gradb]
+        elif self.a is not None: #Activations like PReLU
+            return [self.a], [self.grada]
         else:
             return [], []
     
@@ -155,11 +157,34 @@ class ReLU(Layer):
 
     def updateOutput(self, inp):
         """inp if inp>0 else 0"""
-        self.output = (inp>0.)*inp
+        self.mask = int(inp>0.)
+        self.output = self.mask*inp
         return self.output
 
     def updateGradInput(self, inp, gradOutput):
-        self.gradInput = gradOutput*(inp>0)
+        self.gradInput = gradOutput*self.mask
+
+
+class PReLU(Layer):
+    """ Parametrized Rectified Linear activation layer"""
+    def __init__(self, n_hidden, a = None):
+        self.n_hidden = n_hidden
+        self.a = a or np.random.rand(self.n_hidden)
+        self.grada = np.zeros_like(self.a)
+        super(PReLU, self).__init__()
+
+    def updateOutput(self, inp):
+        positive = inp > 0
+        self.posmask = int(positive)
+        self.negmask = int(not positive)*self.a[:,None]
+        self.output = (self.posmask + self.negmask)*inp
+        return self.output
+
+    def updateGradInput(self, inp, gradOutput):
+        self.gradInput = gradOutput * (self.posmask + self.negmask) 
+
+    def accGradInput(self, inp, gradOutput, scale=1.0):
+        self.grada += scale * gradOutput * (self.posmask + self.negmask)
 
 
 class Sigmoid(Layer):
@@ -170,6 +195,43 @@ class Sigmoid(Layer):
         return self.output
 
     def updateGradInput(self, inp, gradOutput):
+        """ Assumes forward was called before backward """
         self.gradInput = gradOutput * self.output*(1.-self.output)
+
+
+class Tanh(Layer):
+    """ Hyperbolic tangent activation layer """
+
+    def updateOutput(self, inp):
+        self.output = np.tanh(inp)
+        return self.output
+
+    def updateGradInput(self, inp, gradOutput):
+        self.gradInput = gradOutput * (1.-self.output*self.output)
+
+
+class Dropout(Layer):
+    """ Removes connections while training to promote
+        sparsity and regularize learning process."""
+    def __init__(self, p=0.5):
+        self.p = p
+        super(Dropout, self).__init__()
+
+    def updateOutput(self, inp):
+        if self.train:
+            self.mask = int(np.random.rand(*inp.shape) > self.p)/(1.-self.p)
+            self.output = self.mask*inp
+        else:
+            self.output = inp
+        return self.output
+
+    def updateGradInput(self, inp, gradOutput):
+        if self.train:
+            self.gradInput = gradOutput * self.mask
+        else:
+            self.gradInput = gradOutput
+
+
+
 
 
