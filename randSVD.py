@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.linalg import qr, svd
 
-def streamRandomSVD(stream, k, q = 1, row_slice = xrange(100)):
+def streamRandomSVD(stream, k, q = 1, row_slice = range(100)):
     """
     Randomize Subspace Iteration SVD due to Halko, 
     Martinsson, and Tropp arXiv:0909.4061.
