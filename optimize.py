@@ -88,7 +88,7 @@ class SGD(object):
         
 
 class SFOmin(object):
-    def __init__(self, network, data, targets, conv = 1,
+    def __init__(self, network, data, targets, conv = 0.01,
                 **kwargs):
         """
             Train network on data and targets with the
@@ -111,7 +111,7 @@ class SFOmin(object):
         if 'maxiters' in kwargs:
             self.maxiters = kwargs['maxiters']
         else:
-            self.maxiters = 10
+            self.maxiters = 30
         if 'iprint' in kwargs:
             self.iprint = kwargs['iprint']
         else:
@@ -131,8 +131,6 @@ class SFOmin(object):
         return SFO(self.Net._getCost_dCost, self.initial_p, self.batches,
                   display = self.iprint)
 
-    ## I still don't like this convergence criterion, it doesn't work very well.
-    ##
     def optimizeToConv(self):
         deltaCost = 1E6 #arbitrary large number
         niters = 0
