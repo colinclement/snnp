@@ -159,7 +159,7 @@ class ReLU(Layer):
 
     def updateOutput(self, inp):
         """inp if inp>0 else 0"""
-        self.mask = int(inp>0.)
+        self.mask = (inp>0.).astype('int')
         self.output = self.mask*inp
         return self.output
 
@@ -177,8 +177,8 @@ class PReLU(Layer):
 
     def updateOutput(self, inp):
         positive = inp > 0
-        self.posmask = int(positive)
-        self.negmask = int(not positive)*self.a[:,None]
+        self.posmask = (positive).astype('int')
+        self.negmask = ((not positive).astype('int'))*self.a[:,None]
         self.output = (self.posmask + self.negmask)*inp
         return self.output
 
@@ -221,7 +221,7 @@ class Dropout(Layer):
 
     def updateOutput(self, inp):
         if self.train:
-            self.mask = int(np.random.rand(*inp.shape) > self.p)/(1.-self.p)
+            self.mask = ((np.random.rand(*inp.shape) > self.p).astype('int'))/(1.-self.p)
             self.output = self.mask*inp
         else:
             self.output = inp
