@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.linalg import qr, svd
+from scipy.linalg import qr, svdvals
+from scipy.sparse.linalg import svds
 
 def streamRandomSVD(stream, k, q = 1, row_slice = range(100)):
     """
@@ -12,10 +13,10 @@ def streamRandomSVD(stream, k, q = 1, row_slice = range(100)):
         q : Number of passes over data will be 2q+1
         row_slice: iterator over rows of stream
         
-    output: U, S, Vt - Singular Value Decomposition
+    output: S - Singular Values of the streamed matrix
     """
     row0 = stream(row_slice[0])
-    omega = np.random.rand(len(row0),k)
+    omega = np.random.randn(len(row0),k)
     Y = np.array([row0.dot(omega)])
     for n in row_slice[1:]:
         Y = np.r_[Y,[stream(n).dot(omega)]]
@@ -33,8 +34,11 @@ def streamRandomSVD(stream, k, q = 1, row_slice = range(100)):
             Y = np.r_[Y, [stream(n).dot(Qt)]]
         Q,R = qr(Y, mode='economic')
 
-    B = Q.T.dot(Y).dot(Qt.T)
-    Utilde, S, Vt = svd(B)
-    U = Q.dot(Utilde)
-    return U, S, Vt
+    B = row0[:,None,None]*Q[0]
+    for n in row_slice[1:]:
+        B += stream(n)[:,None,None]*Q[n]
+    B = B.sum(1)
+    Svals = svdvals(B, overwrite_a = True)
+    u, s, vt = svds(B, k=1) #top singular vectors
+    return u, Svals, vt
 
