@@ -19,7 +19,7 @@ class Criterion(object):
 class CrossEntropyCriterion(Criterion):
     """
         Cross Entropy Criterion. Good for classification, target is usually
-        one-hot vector.
+        one-hot integer selecting which index is 1.
     """
 
     def softmax(self, z):
@@ -38,7 +38,10 @@ class CrossEntropyCriterion(Criterion):
         return self.output
 
     def backward(self, inp, targets):
-        self.gradInput = self.softmax(inp) - self.one_hot[targets].T
+        if target is list:
+            self.gradInput = self.softmax(inp) - self.one_hot[targets].T
+        else:#for single elements
+            self.gradInput = self.softmax(inp) - self.one_hot[[targets]].T
         return self.gradInput
 
 
