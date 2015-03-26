@@ -38,7 +38,7 @@ class CrossEntropyCriterion(Criterion):
         return self.output
 
     def backward(self, inp, targets):
-        if target is list:
+        if targets is list:
             self.gradInput = self.softmax(inp) - self.one_hot[targets].T
         else:#for single elements
             self.gradInput = self.softmax(inp) - self.one_hot[[targets]].T
