@@ -10,8 +10,8 @@ from optimize import *
 from randSVD import *
 from datetime import datetime
 
-networkfilename = 'trained_networks/2Layer/2Layer_ReLU_MNIST.pkl'
-#networkfilename = 'trained_networks/2Layer/2Layer_Sigmoid_MNIST.pkl'
+networkfilename = '../trained_networks/2Layer/2Layer_ReLU_MNIST.pkl'
+#networkfilename = '../trained_networks/2Layer/2Layer_Sigmoid_MNIST.pkl'
 
 with open(networkfilename, 'r') as infile:
     NN = pickle.load(infile)
@@ -28,7 +28,7 @@ def getJacobianRow(n, net=NN, data=train):
     return net.getParameters()[1]
 
 networktype = networkfilename.split('_')[-2]
-memfilename = 'trained_networks/2Layer/memmap2Layer_{}_jac.dat'.format(networktype)
+memfilename = '../trained_networks/2Layer/memmap2Layer_{}_jac.dat'.format(networktype)
 
 if os.path.isfile(memfilename):
     print memfilename, " exists!"
@@ -51,7 +51,7 @@ start = datetime.now()
 u, Svals, vt = streamRandomSVD(lambda n: fp[n], 500, 1, range(10000))
 print 'Singular values took ', datetime.now()-start
 
-singfile='trained_networks/2Layer/2Layer_{}_jac_singular_values.npy'.format(networktype)
+singfile='../trained_networks/2Layer/2Layer_{}_jac_singular_values.npy'.format(networktype)
 
 with open(singfile, 'w') as outfile:
     np.savez(outfile, u=u, Svals=Svals, vt=vt)
