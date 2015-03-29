@@ -15,10 +15,10 @@ NN = Network()
 NN.criterion = CrossEntropyCriterion()
 NN.training()
 
-#layers = [Linear(784, 400, seed=92089), ReLU(), Linear(400, 10, seed=14850),
+#layers = [Linear(784, 400, seed=55044), ReLU(), Linear(400, 10, seed=92089),
 #          ReLU()]
 #savefile = '../trained_networks/2Layer/PReLU_initial_conds/ReLU.pkl'
-layers = [Linear(784, 400, seed=92089), Sigmoid(), Linear(400, 10, seed=14850),
+layers = [Linear(784, 400, seed=55044), Sigmoid(), Linear(400, 10, seed=92098),
           Sigmoid()]
 savefile = '../trained_networks/2Layer/PReLU_initial_conds/Sigmoid.pkl'
 NN.layers = layers
@@ -26,8 +26,8 @@ NN._initial_parameters = NN.getParameters()[0]
 
 SFO = SFOmin(NN, train[0], train[1], iprint=2)
 
-SFO.conv = 0.01
-SFO.maxiters = 30
+SFO.conv = 0.005
+SFO.maxiters = 40
 
 SFO.optimizeToConv()
 
