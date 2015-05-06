@@ -11,12 +11,18 @@ out neural networks, based on the torch nn library
 import numpy as np
 from scipy.misc import logsumexp
 from scipy.special import expit
+from itertools import izip
 
 class Layer(object):
     """ A basic object for the neural network, denotes
     a single layer of the network with its own activation
     function.
     """
+    beta1 = 0.9
+    beta2 = 0.999
+    epsilon = 1e-8
+    lam = 1-1e-8
+    alpha = 0.001
 
     def __init__(self):
         """ Initialization """
@@ -35,6 +41,11 @@ class Layer(object):
         self.grad_bias = None
 
         self.train = False
+
+        self.t = 0
+
+        self._ms = {}
+        self._vs = {}
 
     def forward(self, inp): 
         """ Maps the input layer forward through the network,
@@ -65,17 +76,33 @@ class Layer(object):
 
     def zero_grad_parameters(self):
         """ Reset the grad of the parameters """
-
         ps, gps = self.parameters()
         for gp in gps:
             gp.fill(0)
 
-    def update_parameters(self, learning_rate):
+    def update_parameters_sg(self, learning_rate):
         """ Called after update_grad_parameters, actually
         adjusts the parameters of the layer """
         ps, gps = self.parameters()
-        for p,gp in zip(ps,gps):
+        for p,gp in izip(ps,gps):
             p -= learning_rate*gp
+
+    def update_parameters(self, learning_rate):
+        """ Called after update_grad_parameters, actually
+        adjusts the parameters of the layer, doing adam """
+        ps, gps = self.parameters()
+        if (self.t==0):
+            for i,gp in enumerate(gps):
+                self._ms[i] = np.zeros_like(gp)
+                self._vs[i] = np.zeros_like(gp)
+
+        self.t += 1
+        beta1t = self.beta1 * self.lam**(self.t-1)
+        for i,(p,gp) in enumerate(izip(ps,gps)):
+            self._ms[i] = beta1t * self._ms[i] + (1-beta1t)*gp
+            self._vs[i] = self.beta2 * self._vs[i] + ( 1-self.beta2 )*gp**2
+            alphat = learning_rate * np.sqrt( 1 - self.beta2**self.t ) / ( 1 - self.beta1**self.t )
+            p -= alphat * self._ms[i] / ( np.sqrt( self._vs[i] ) + self.epsilon )
 
     def acc_update_grad_parameters(self, inp, grad_output, learning_rate):
         """ Convience function that does both an update
@@ -112,6 +139,10 @@ class Linear(Layer):
         self.grad_bias = np.zeros_like(self.bias)
 
         self.output = self.bias.copy()
+
+        self.t = 0
+        self._ms = {}
+        self._vs = {}
 
     def update_output(self, inp):
         self.output = self.weights.dot(inp) + self.bias[:,None]
