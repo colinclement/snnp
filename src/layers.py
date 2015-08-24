@@ -25,7 +25,7 @@ class Layer(object):
         self.gradOutput - Gradients w.r.t. output of layer
         self.train - Bool if network is being trained
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
         """Default initializatin"""
         self.output = None #Computed with last call of forward()
         self.gradInput = None # Gradients w.r.t. inputs
@@ -40,6 +40,13 @@ class Layer(object):
 
         self.train = False
         self.scale = 1.
+        
+        if 'seed' in kwargs:
+            self.seed = kwargs['seed']
+            self.rng = np.random.RandomState()
+            self.rng.seed(self.seed)
+        else:
+            self.rng = np.random.RandomState()
 
     def forward(self, inp):
         """ Given an input, compute the forward pass """
@@ -106,14 +113,15 @@ class Layer(object):
 
 class Linear(Layer):
     """Linear layer with weights and biases  Wx+b"""
-    def __init__(self, fan_in, fan_out, weight_init='PReLU'):
+    def __init__(self, fan_in, fan_out, weight_init='PReLU', **kwargs):
+        super(Linear, self).__init__(**kwargs)
         if weight_init == 'PReLU':
-            self.W = np.random.normal(0.0, np.sqrt(2./fan_out), (fan_out, fan_in))
-            self.b = np.random.normal(0.0, np.sqrt(2./fan_out), fan_out)
+            self.W = self.rng.normal(0.0, np.sqrt(2./fan_out), (fan_out, fan_in))
+            self.b = self.rng.normal(0.0, np.sqrt(2./fan_out), fan_out)
         elif weight_init == 'Ganguli': #Saxe & Ganguli initial conditions
-            self.W = np.random.normal(0.0, 1./np.sqrt(fan_out), (fan_out, fan_in))
+            self.W = self.rng.normal(0.0, 1./np.sqrt(fan_out), (fan_out, fan_in))
             self.W = orthogonalize(self.W)
-            self.b = np.random.normal(0.0, 1./np.sqrt(fan_out), fan_out)
+            self.b = self.rng.normal(0.0, 1./np.sqrt(fan_out), fan_out)
         self.gradW = np.zeros_like(self.W)
         self.gradb = np.zeros_like(self.b)
 

@@ -11,12 +11,18 @@ import numpy as np
 
 class Network(object):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.layers = []
         self.output = None
         self.criterion = None
         self.inputlist = []
         self.train = True
+        if 'seed' in kwargs:
+            self.seed = kwargs['seed']
+            self.rng = np.random.RandomState()
+            self.rng.seed(self.seed)
+        else:
+            self.rng = np.random.RandomState()
 
     def forward(self, inp, targets):
         if np.prod(inp.shape) == 0 and len(targets)==0:
