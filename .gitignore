@@ -3,3 +3,5 @@
 *~
 nbs/plots/*
 trained_networks/*
+.DS_Store
+mnist/*
